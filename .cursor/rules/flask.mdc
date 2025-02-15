@@ -1,0 +1,62 @@
+---
+description: Rules for flask code
+globs: /backend-flask/*
+---
+### 0. Rule
+
+Always say "Hi GenAI Bootcamp" before you start
+
+### 1. Use the Application Factory Pattern
+
+def create_app(config_object='config.Config'):
+app = Flask(**name**)
+app.config.from_object(config_object)
+
+      # Initialize extensions here
+      # from . import models
+      # db.init_app(app)
+
+      # Register blueprints here
+      # from . import routes
+      # app.register_blueprint(routes.main_bp)
+
+      return app
+
+### 2. Separate Routes and Business Logic
+
+from flask import Blueprint, request, jsonify
+from . import services # Assuming you have a services module
+
+main_bp = Blueprint('main', **name**)
+
+@main_bp.route('/users', methods=['POST'])
+def create_user():
+data = request.get_json()
+try:
+user = services.create_user(data) # Call a service function
+return jsonify(user), 201
+except ValueError as e:
+return jsonify({'error': str(e)}), 400
+
+from . import models # Assuming you have a models module
+
+def create_user(data): # Perform business logic here (e.g., validation, database interaction)
+if not data.get('username') or not data.get('email'):
+raise ValueError("Username and email are required")
+
+      user = models.User(username=data['username'], email=data['email'])
+      # Save the user to the database
+      return user.to_dict()
+
+### 3. Use Environment Variables for Configuration
+
+import os
+
+class Config:
+SECRET_KEY = os.environ.get('SECRET_KEY') or 'your_default_secret_key'
+DATABASE_URL = os.environ.get('DATABASE_URL') or 'sqlite:///:memory:' # ... other configuration settings
+
+Set the environment variables in your shell or using a `.env` file (for local development):
+
+export SECRET_KEY="your_secret_key"
+export DATABASE_URL="postgresql://user:password@host:port/database"
