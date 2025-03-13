@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,30 +10,86 @@ import {
   Image,
   Alert,
   Modal,
+  Switch,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useFlashcards } from "../hooks/useFlashcards";
 import { ImageGenerationService } from "../services/imageGenerationService";
+import { TranslationService } from "../services/translationService";
+import LanguageSelector from "../components/LanguageSelector";
 
 export default function FlashcardCreator() {
   const navigation = useNavigation();
   const { createFlashcard } = useFlashcards();
   const [word, setWord] = useState("");
+  const [translation, setTranslation] = useState<string | null>(null);
+  const [sourceLanguage, setSourceLanguage] = useState("en");
+  const [targetLanguage, setTargetLanguage] = useState("es");
   const [loading, setLoading] = useState(false);
   const [loadingOperation, setLoadingOperation] = useState<
-    "generating" | "saving"
+    "generating" | "saving" | "translating"
   >("generating");
   const [generationProgress, setGenerationProgress] = useState(0);
   const [images, setImages] = useState<string[]>([]);
   const [usingPlaceholders, setUsingPlaceholders] = useState(false);
   const [loadingImages, setLoadingImages] = useState<boolean[]>([]);
+  const [usingDictionaryTranslation, setUsingDictionaryTranslation] =
+    useState(false);
+  const [useLlama, setUseLlama] = useState(false);
 
   // Add a fallback image URL to use if an image fails to load
   const fallbackImageUrl =
     "https://dummyimage.com/1024x1024/cccccc/ffffff&text=Image";
 
+  // Remove the auto-translate effect
+  // Instead, we'll translate only when the user clicks the translate button
+  // or when they generate images
+  useEffect(() => {
+    // Only reset translation when languages change
+    if (sourceLanguage === targetLanguage) {
+      setTranslation(null);
+    }
+  }, [sourceLanguage, targetLanguage]);
+
+  // Update TranslationService when useLlama changes
+  useEffect(() => {
+    TranslationService.enableLlama(useLlama);
+  }, [useLlama]);
+
+  const translateWord = async () => {
+    if (!word.trim() || sourceLanguage === targetLanguage) return;
+
+    setLoadingOperation("translating");
+    setLoading(true);
+    setUsingDictionaryTranslation(false);
+    try {
+      const translatedWord = await TranslationService.translateWord(
+        word.trim(),
+        sourceLanguage,
+        targetLanguage
+      );
+
+      // Check if we're using a dictionary fallback
+      if (translatedWord.includes("(translation unavailable)")) {
+        setUsingDictionaryTranslation(true);
+      }
+
+      setTranslation(translatedWord);
+    } catch (error) {
+      console.error("Translation error:", error);
+      // Don't show alert for translation errors, just log them
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generateImages = async () => {
     if (!word.trim()) return;
+
+    // If we haven't translated yet and languages are different, translate first
+    if (!translation && sourceLanguage !== targetLanguage) {
+      await translateWord();
+    }
 
     setLoadingOperation("generating");
     setLoading(true);
@@ -70,7 +126,13 @@ export default function FlashcardCreator() {
     try {
       setLoadingOperation("saving");
       setLoading(true);
-      await createFlashcard(word.trim(), images);
+      await createFlashcard(
+        word.trim(),
+        images,
+        sourceLanguage,
+        targetLanguage,
+        translation
+      );
       Alert.alert("Success", "Flashcard saved successfully!", [
         {
           text: "OK",
@@ -118,6 +180,8 @@ export default function FlashcardCreator() {
             <Text style={styles.loaderText}>
               {loadingOperation === "generating"
                 ? `Generating images... ${generationProgress}%`
+                : loadingOperation === "translating"
+                ? "Translating..."
                 : "Saving flashcard..."}
             </Text>
             {loadingOperation === "generating" && (
@@ -135,6 +199,46 @@ export default function FlashcardCreator() {
       </Modal>
 
       <View style={styles.content}>
+        {/* Language Selectors */}
+        <View style={styles.languageContainer}>
+          <LanguageSelector
+            selectedLanguage={sourceLanguage}
+            onSelectLanguage={setSourceLanguage}
+            label="Source Language"
+          />
+          <LanguageSelector
+            selectedLanguage={targetLanguage}
+            onSelectLanguage={setTargetLanguage}
+            label="Target Language"
+          />
+        </View>
+
+        {/* Llama Toggle */}
+        <View style={styles.toggleContainer}>
+          <View style={styles.toggleHeader}>
+            <Text style={styles.toggleLabel}>Use Llama for translations:</Text>
+            <Switch
+              value={useLlama}
+              onValueChange={setUseLlama}
+              trackColor={{ false: "#767577", true: "#81b0ff" }}
+              thumbColor={useLlama ? "#6C63FF" : "#f4f3f4"}
+            />
+          </View>
+
+          {useLlama && (
+            <View style={styles.llamaInfoContainer}>
+              <Text style={styles.llamaNote}>
+                Using local Llama model for translations
+              </Text>
+              <Text style={styles.llamaDescription}>
+                • First use will download a small model (~500MB){"\n"}•
+                Translations work offline after download{"\n"}• No API quota
+                limits{"\n"}• Slower than cloud API but more reliable
+              </Text>
+            </View>
+          )}
+        </View>
+
         <Text style={styles.label}>Enter a word or phrase:</Text>
         <TextInput
           style={styles.input}
@@ -144,8 +248,47 @@ export default function FlashcardCreator() {
           placeholderTextColor="#999"
         />
 
+        {sourceLanguage !== targetLanguage && (
+          <View style={styles.translationSection}>
+            {translation ? (
+              <View style={styles.translationContainer}>
+                <Text style={styles.translationLabel}>Translation:</Text>
+                <Text style={styles.translationText}>{translation}</Text>
+
+                {usingDictionaryTranslation && (
+                  <Text style={styles.dictionaryNotice}>
+                    Using offline dictionary due to API limits.
+                  </Text>
+                )}
+
+                {useLlama && !usingDictionaryTranslation && translation && (
+                  <Text style={styles.llamaTranslationNotice}>
+                    Translated using local Llama model.
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.translateButton,
+                  !word.trim() && styles.buttonDisabled,
+                ]}
+                onPress={translateWord}
+                disabled={!word.trim() || loading}
+              >
+                <Text style={styles.buttonText}>Translate</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         <TouchableOpacity
-          style={[styles.button, !word.trim() && styles.buttonDisabled]}
+          style={[
+            styles.button,
+            !word.trim() && styles.buttonDisabled,
+            styles.generateButton,
+          ]}
           onPress={generateImages}
           disabled={!word.trim() || loading}
         >
@@ -327,5 +470,81 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: "#5D4037",
     fontSize: 14,
+  },
+  languageContainer: {
+    marginBottom: 15,
+  },
+  translationContainer: {
+    backgroundColor: "#f0f8ff",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: "#6C63FF",
+  },
+  translationLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+    marginBottom: 5,
+  },
+  translationText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+  },
+  translationSection: {
+    marginBottom: 20,
+  },
+  translateButton: {
+    backgroundColor: "#4A90E2",
+  },
+  generateButton: {
+    marginTop: 10,
+  },
+  dictionaryNotice: {
+    fontSize: 12,
+    color: "#FF9800",
+    marginTop: 5,
+    fontStyle: "italic",
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+    backgroundColor: "#f0f0f0",
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  toggleHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginRight: 10,
+    flex: 1,
+  },
+  llamaInfoContainer: {
+    marginLeft: 10,
+  },
+  llamaNote: {
+    fontSize: 12,
+    color: "#6C63FF",
+    marginBottom: 5,
+  },
+  llamaDescription: {
+    fontSize: 12,
+    color: "#666",
+  },
+  llamaTranslationNotice: {
+    fontSize: 12,
+    color: "#6C63FF",
+    marginTop: 5,
+    fontStyle: "italic",
   },
 });

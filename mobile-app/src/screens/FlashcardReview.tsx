@@ -24,6 +24,7 @@ export default function FlashcardReview() {
   const { flashcards, loading, error, updateReviewStatus } = useFlashcards();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showWord, setShowWord] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
 
   // If flashcardId is provided, start with that card
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function FlashcardReview() {
     if (currentIndex < flashcards.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setShowWord(false);
+      setShowTranslation(false);
     }
   };
 
@@ -58,11 +60,16 @@ export default function FlashcardReview() {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setShowWord(false);
+      setShowTranslation(false);
     }
   };
 
   const toggleWord = () => {
     setShowWord(!showWord);
+  };
+
+  const toggleTranslation = () => {
+    setShowTranslation(!showTranslation);
   };
 
   if (loading) {
@@ -123,6 +130,28 @@ export default function FlashcardReview() {
             <Text style={styles.tapText}>Tap to reveal word</Text>
           )}
         </TouchableOpacity>
+
+        {currentCard.translation && (
+          <TouchableOpacity
+            style={styles.translationContainer}
+            onPress={toggleTranslation}
+            activeOpacity={0.8}
+          >
+            {showTranslation ? (
+              <Text style={styles.translationText}>
+                {currentCard.translation}
+              </Text>
+            ) : (
+              <Text style={styles.tapText}>Tap to reveal translation</Text>
+            )}
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.languageInfo}>
+          <Text style={styles.languageText}>
+            {currentCard.source_language} → {currentCard.target_language}
+          </Text>
+        </View>
 
         <View style={styles.statsContainer}>
           <Text style={styles.statsText}>
@@ -264,5 +293,31 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 40,
     color: "#333",
+  },
+  translationContainer: {
+    backgroundColor: "#f0f8ff",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 10,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  translationText: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#6C63FF",
+  },
+  languageInfo: {
+    marginTop: 10,
+    alignItems: "center",
+  },
+  languageText: {
+    fontSize: 14,
+    color: "#666",
+    fontStyle: "italic",
   },
 });

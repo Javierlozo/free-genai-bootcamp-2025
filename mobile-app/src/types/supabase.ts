@@ -14,6 +14,9 @@ export interface Database {
           id: string;
           created_at: string;
           word: string;
+          translation: string | null;
+          source_language: string;
+          target_language: string;
           images: string[];
           last_reviewed: string | null;
           review_count: number;
@@ -22,6 +25,9 @@ export interface Database {
           id?: string;
           created_at?: string;
           word: string;
+          translation?: string | null;
+          source_language: string;
+          target_language: string;
           images: string[];
           last_reviewed?: string | null;
           review_count?: number;
@@ -30,6 +36,9 @@ export interface Database {
           id?: string;
           created_at?: string;
           word?: string;
+          translation?: string | null;
+          source_language?: string;
+          target_language?: string;
           images?: string[];
           last_reviewed?: string | null;
           review_count?: number;

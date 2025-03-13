@@ -10,13 +10,27 @@ export function useFlashcards() {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch all flashcards
-  const fetchFlashcards = async () => {
+  const fetchFlashcards = async (
+    sourceLanguage?: string,
+    targetLanguage?: string
+  ) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from("flashcards")
         .select("*")
         .order("created_at", { ascending: false });
+
+      // Apply language filters if provided
+      if (sourceLanguage) {
+        query = query.eq("source_language", sourceLanguage);
+      }
+
+      if (targetLanguage) {
+        query = query.eq("target_language", targetLanguage);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setFlashcards(data || []);
@@ -28,7 +42,13 @@ export function useFlashcards() {
   };
 
   // Create a new flashcard
-  const createFlashcard = async (word: string, images: string[]) => {
+  const createFlashcard = async (
+    word: string,
+    images: string[],
+    sourceLanguage: string = "en",
+    targetLanguage: string = "en",
+    translation: string | null = null
+  ) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -37,6 +57,9 @@ export function useFlashcards() {
           {
             word,
             images,
+            source_language: sourceLanguage,
+            target_language: targetLanguage,
+            translation,
             review_count: 0,
           },
         ])
