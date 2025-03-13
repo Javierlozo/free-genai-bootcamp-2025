@@ -4,10 +4,28 @@ A mobile application that helps users learn new words through AI-generated image
 
 ## Features
 
-- Create flashcards with AI-generated images for any word
-- Review flashcards with spaced repetition
-- Track learning progress
-- Organize flashcards into sets
+- **AI-Powered Image Generation**: Create flashcards with DALL-E 3 generated images for any word or phrase
+- **Graceful Fallbacks**: Automatically switches to placeholder images when API limits are reached
+- **Visual Learning**: Multiple images per word to enhance memory retention
+- **Progress Tracking**: Review flashcards with spaced repetition system
+- **Organized Learning**: Group flashcards into sets for focused study
+- **Offline Access**: Review previously created flashcards without internet connection
+
+## Implementation Details
+
+### Image Generation
+
+- Uses OpenAI's DALL-E 3 API to generate contextually relevant images for words
+- Implements sequential image generation with progress tracking
+- Provides graceful fallbacks to placeholder images when API limits are reached
+- Handles image loading errors with fallback mechanisms
+
+### User Experience
+
+- Real-time progress indicators during image generation
+- Smooth loading transitions with activity indicators
+- Clear notifications when using placeholder images
+- Responsive design for various screen sizes
 
 ## Setup
 
@@ -58,12 +76,28 @@ npm run android
 npm run ios
 ```
 
+## API Usage Notes
+
+The app uses OpenAI's DALL-E 3 API which has the following limitations:
+
+- DALL-E 3 only supports generating one image per API call
+- API usage is subject to billing limits
+- When limits are reached, the app automatically switches to placeholder images
+
 ## Technologies Used
 
-- React Native
-- Expo
-- Supabase (for database)
-- OpenAI DALL-E (for image generation)
+- **Frontend**: React Native, Expo
+- **Backend**: Supabase (for database and authentication)
+- **AI**: OpenAI DALL-E 3 (for image generation)
+- **Storage**: Supabase Storage (for saving flashcard data)
+
+## Future Improvements
+
+- Implement word categorization for better prompt generation
+- Add support for multiple languages
+- Enhance spaced repetition algorithm
+- Implement offline image caching
+- Add export/import functionality for flashcard sets
 
 ## License
 
